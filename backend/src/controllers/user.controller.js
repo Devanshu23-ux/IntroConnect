@@ -24,7 +24,7 @@ export async function getMyFriends(req, res) {
   try {
     const user = await User.findById(req.user.id)
       .select("friends")
-      .populate("friends", "fullName profilePic nativeLanguage learningLanguage");
+      .populate("friends", "fullName profilePic nativeLanguage");
 
     res.status(200).json(user.friends);
   } catch (error) {
@@ -70,6 +70,7 @@ export async function sendFriendRequest(req, res) {
     const friendRequest = await FriendRequest.create({
       sender: myId,
       recipient: recipientId,
+      // recipientSeenPending defaults to false (unread for recipient)
     });
 
     res.status(201).json(friendRequest);
@@ -95,6 +96,10 @@ export async function acceptFriendRequest(req, res) {
     }
 
     friendRequest.status = "accepted";
+    // When accepted: mark sender's accepted notification as unread
+    friendRequest.senderSeenAccepted = false;
+    // No need for recipientSeenPending anymore, but mark as read to clear any lingering badge
+    friendRequest.recipientSeenPending = true;
     await friendRequest.save();
 
     // add each user to the other's friends array
@@ -119,14 +124,20 @@ export async function getFriendRequests(req, res) {
     const incomingReqs = await FriendRequest.find({
       recipient: req.user.id,
       status: "pending",
-    }).populate("sender", "fullName profilePic nativeLanguage learningLanguage");
+    }).populate("sender", "fullName profilePic nativeLanguage");
 
     const acceptedReqs = await FriendRequest.find({
       sender: req.user.id,
       status: "accepted",
     }).populate("recipient", "fullName profilePic");
 
-    res.status(200).json({ incomingReqs, acceptedReqs });
+    // Also include accepted requests where current user was the recipient (they accepted someone else)
+    const acceptedByMe = await FriendRequest.find({
+      recipient: req.user.id,
+      status: "accepted",
+    }).populate("sender", "fullName profilePic");
+
+    res.status(200).json({ incomingReqs, acceptedReqs, acceptedByMe });
   } catch (error) {
     console.log("Error in getPendingFriendRequests controller", error.message);
     res.status(500).json({ message: "Internal Server Error" });
@@ -138,11 +149,44 @@ export async function getOutgoingFriendReqs(req, res) {
     const outgoingRequests = await FriendRequest.find({
       sender: req.user.id,
       status: "pending",
-    }).populate("recipient", "fullName profilePic nativeLanguage learningLanguage");
+    }).populate("recipient", "fullName profilePic nativeLanguage");
 
     res.status(200).json(outgoingRequests);
   } catch (error) {
     console.log("Error in getOutgoingFriendReqs controller", error.message);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+
+export async function markNotificationsRead(req, res) {
+  try {
+    const userId = req.user.id;
+    const { type } = req.query; // 'pending' | 'accepted' | 'all'
+
+    const ops = [];
+
+    if (type === "pending" || type === "all") {
+      ops.push(
+        FriendRequest.updateMany(
+          { recipient: userId, status: "pending", recipientSeenPending: false },
+          { $set: { recipientSeenPending: true } }
+        )
+      );
+    }
+
+    if (type === "accepted" || type === "all") {
+      ops.push(
+        FriendRequest.updateMany(
+          { sender: userId, status: "accepted", senderSeenAccepted: false },
+          { $set: { senderSeenAccepted: true } }
+        )
+      );
+    }
+
+    await Promise.all(ops);
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error("Error in markNotificationsRead controller", error.message);
     res.status(500).json({ message: "Internal Server Error" });
   }
 }

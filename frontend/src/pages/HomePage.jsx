@@ -5,6 +5,7 @@ import {
   getRecommendedUsers,
   getUserFriends,
   sendFriendRequest,
+  getFriendRequests,
 } from "../lib/api";
 import { Link } from "react-router";
 import { CheckCircleIcon, MapPinIcon, UserPlusIcon, UsersIcon } from "lucide-react";
@@ -17,6 +18,7 @@ import NoFriendsFound from "../components/NoFriendsFound";
 const HomePage = () => {
   const queryClient = useQueryClient();
   const [outgoingRequestsIds, setOutgoingRequestsIds] = useState(new Set());
+  const [incomingRequestsFromIds, setIncomingRequestsFromIds] = useState(new Set());
 
   const { data: friends = [], isLoading: loadingFriends } = useQuery({
     queryKey: ["friends"],
@@ -33,9 +35,17 @@ const HomePage = () => {
     queryFn: getOutgoingFriendReqs,
   });
 
+  const { data: friendRequests } = useQuery({
+    queryKey: ["friendRequests"],
+    queryFn: getFriendRequests,
+  });
+
   const { mutate: sendRequestMutation, isPending } = useMutation({
     mutationFn: sendFriendRequest,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["outgoingFriendReqs"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["outgoingFriendReqs"] });
+      queryClient.invalidateQueries({ queryKey: ["friendRequests"] });
+    },
   });
 
   useEffect(() => {
@@ -44,9 +54,19 @@ const HomePage = () => {
       outgoingFriendReqs.forEach((req) => {
         outgoingIds.add(req.recipient._id);
       });
-      setOutgoingRequestsIds(outgoingIds);
     }
+    setOutgoingRequestsIds(outgoingIds);
   }, [outgoingFriendReqs]);
+
+  useEffect(() => {
+    const incomingIds = new Set();
+    if (friendRequests?.incomingReqs && friendRequests.incomingReqs.length > 0) {
+      friendRequests.incomingReqs.forEach((req) => {
+        if (req.sender?._id) incomingIds.add(req.sender._id);
+      });
+    }
+    setIncomingRequestsFromIds(incomingIds);
+  }, [friendRequests]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -78,9 +98,7 @@ const HomePage = () => {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Meet Different Minds</h2>
-                <p className="opacity-70">
-                  Discover perfect people exchange thoughts
-                </p>
+                <p className="opacity-70">Discover perfect people exchange thoughts</p>
               </div>
             </div>
           </div>
@@ -92,20 +110,17 @@ const HomePage = () => {
           ) : recommendedUsers.length === 0 ? (
             <div className="card bg-base-200 p-6 text-center">
               <h3 className="font-semibold text-lg mb-2">No recommendations available</h3>
-              <p className="text-base-content opacity-70">
-                Check back later for new mindsets!
-              </p>
+              <p className="text-base-content opacity-70">Check back later for new mindsets!</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {recommendedUsers.map((user) => {
-                const hasRequestBeenSent = outgoingRequestsIds.has(user._id);
+                const hasOutgoing = outgoingRequestsIds.has(user._id);
+                const hasIncoming = incomingRequestsFromIds.has(user._id);
+                const hasPendingWithUser = hasOutgoing || hasIncoming;
 
                 return (
-                  <div
-                    key={user._id}
-                    className="card bg-base-200 hover:shadow-lg transition-all duration-300"
-                  >
+                  <div key={user._id} className="card bg-base-200 hover:shadow-lg transition-all duration-300">
                     <div className="card-body p-5 space-y-4">
                       <div className="flex items-center gap-3">
                         <div className="avatar size-16 rounded-full">
@@ -136,34 +151,35 @@ const HomePage = () => {
                           {getLanguageFlag(user.nativeLanguage)}
                           Native: {capitialize(user.nativeLanguage)}
                         </span>
-                        <span className="badge badge-outline">
-                          {getLanguageFlag(user.learningLanguage)}
-                          Learning: {capitialize(user.learningLanguage)}
-                        </span>
                       </div>
 
                       {user.bio && <p className="text-sm opacity-70">{user.bio}</p>}
 
                       {/* Action button */}
-                      <button
-                        className={`btn w-full mt-2 ${
-                          hasRequestBeenSent ? "btn-disabled" : "btn-primary"
-                        } `}
-                        onClick={() => sendRequestMutation(user._id)}
-                        disabled={hasRequestBeenSent || isPending}
-                      >
-                        {hasRequestBeenSent ? (
-                          <>
-                            <CheckCircleIcon className="size-4 mr-2" />
-                            Request Sent
-                          </>
-                        ) : (
-                          <>
-                            <UserPlusIcon className="size-4 mr-2" />
-                            Send Friend Request
-                          </>
-                        )}
-                      </button>
+                      {hasIncoming ? (
+                        <Link to="/notifications" className="btn btn-secondary w-full mt-2">
+                          <CheckCircleIcon className="size-4 mr-2" />
+                          Respond to Request
+                        </Link>
+                      ) : (
+                        <button
+                          className={`btn w-full mt-2 ${hasOutgoing ? "btn-disabled" : "btn-primary"} `}
+                          onClick={() => sendRequestMutation(user._id)}
+                          disabled={hasOutgoing || isPending}
+                        >
+                          {hasOutgoing ? (
+                            <>
+                              <CheckCircleIcon className="size-4 mr-2" />
+                              Request Sent
+                            </>
+                          ) : (
+                            <>
+                              <UserPlusIcon className="size-4 mr-2" />
+                              Send Friend Request
+                            </>
+                          )}
+                        </button>
+                      )}
                     </div>
                   </div>
                 );

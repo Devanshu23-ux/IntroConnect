@@ -54,4 +54,29 @@ npm install
 npm run dev
 ```
 
-hii
+---
+
+## 🐳 Docker (Frontend + Backend + MongoDB)
+
+1) Copy `env.example` to `.env` and fill values:
+
+```
+cp env.example .env
+```
+
+2) Build and start all services:
+
+```
+docker compose up -d --build
+```
+
+Services:
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:5001/api
+- MongoDB: localhost:27017
+
+To stop:
+
+```
+docker compose down
+```

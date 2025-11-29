@@ -59,7 +59,7 @@ const SignUpPage = () => {
                 <div>
                   <h2 className="text-xl font-semibold">Create an Account</h2>
                   <p className="text-sm opacity-70">
-                    Join IntroConnect and start your language learning adventure!
+                    Join IntroConnect and meet new friends today!
                   </p>
                 </div>
 

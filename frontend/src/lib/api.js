@@ -63,3 +63,11 @@ export async function getStreamToken() {
   const response = await axiosInstance.get("/chat/token");
   return response.data;
 }
+
+// Mark notifications as read: type can be 'pending', 'accepted', or 'all'
+export async function markNotificationsRead(type = "all") {
+  const response = await axiosInstance.put(`/users/notifications/read`, null, {
+    params: { type },
+  });
+  return response.data;
+}

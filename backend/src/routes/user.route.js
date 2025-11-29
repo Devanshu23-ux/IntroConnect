@@ -7,6 +7,7 @@ import {
   getOutgoingFriendReqs,
   getRecommendedUsers,
   sendFriendRequest,
+  markNotificationsRead,
 } from "../controllers/user.controller.js";
 
 const router = express.Router();
@@ -22,5 +23,8 @@ router.put("/friend-request/:id/accept", acceptFriendRequest);
 
 router.get("/friend-requests", getFriendRequests);
 router.get("/outgoing-friend-requests", getOutgoingFriendReqs);
+
+// mark notifications as read
+router.put("/notifications/read", markNotificationsRead);
 
 export default router;

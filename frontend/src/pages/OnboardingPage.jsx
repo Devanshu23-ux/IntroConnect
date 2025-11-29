@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { completeOnboarding } from "../lib/api";
 import { LoaderIcon, MapPinIcon, ShipWheelIcon, ShuffleIcon, CameraIcon } from "lucide-react";
-import { LANGUAGES } from "../constants";
+import { LANGUAGES, PRESET_AVATARS } from "../constants";
 
 const OnboardingPage = () => {
   const { authUser } = useAuthUser();
@@ -14,10 +14,20 @@ const OnboardingPage = () => {
     fullName: authUser?.fullName || "",
     bio: authUser?.bio || "",
     nativeLanguage: authUser?.nativeLanguage || "",
-    learningLanguage: authUser?.learningLanguage || "",
     location: authUser?.location || "",
     profilePic: authUser?.profilePic || "",
   });
+
+  // Prepare a shuffled avatar pool so users see each preset before repeats
+  const shuffle = (arr) => {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+  const [avatarPool, setAvatarPool] = useState(() => shuffle(PRESET_AVATARS));
 
   const { mutate: onboardingMutation, isPending } = useMutation({
     mutationFn: completeOnboarding,
@@ -38,12 +48,23 @@ const OnboardingPage = () => {
   };
 
   const handleRandomAvatar = () => {
-    // Use DiceBear fun-emoji with user's name as seed (fallback to random)
-    const seed = (formState.fullName && formState.fullName.trim()) || `user-${Math.floor(Math.random() * 100000)}`;
-    const randomAvatar = `https://api.dicebear.com/7.x/fun-emoji/png?seed=${encodeURIComponent(seed)}&size=128`;
+    let pool = avatarPool;
+    if (pool.length === 0) {
+      pool = shuffle(PRESET_AVATARS);
+    }
 
-    setFormState({ ...formState, profilePic: randomAvatar });
-    toast.success("Random profile picture generated!");
+    // Pick next avatar different from current preview if possible
+    let next = pool[0];
+    if (pool.length > 1 && next === formState.profilePic) {
+      next = pool[1];
+      pool = [pool[0], ...pool.slice(2)];
+    } else {
+      pool = pool.slice(1);
+    }
+
+    setAvatarPool(pool);
+    setFormState({ ...formState, profilePic: next });
+    toast.success("Random profile picture selected!");
   };
 
   return (
@@ -124,26 +145,6 @@ const OnboardingPage = () => {
                   <option value="">Select your native language</option>
                   {LANGUAGES.map((lang) => (
                     <option key={`native-${lang}`} value={lang.toLowerCase()}>
-                      {lang}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* LEARNING LANGUAGE */}
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Learning Language</span>
-                </label>
-                <select
-                  name="learningLanguage"
-                  value={formState.learningLanguage}
-                  onChange={(e) => setFormState({ ...formState, learningLanguage: e.target.value })}
-                  className="select select-bordered w-full"
-                >
-                  <option value="">Select language you're learning</option>
-                  {LANGUAGES.map((lang) => (
-                    <option key={`learning-${lang}`} value={lang.toLowerCase()}>
                       {lang}
                     </option>
                   ))}

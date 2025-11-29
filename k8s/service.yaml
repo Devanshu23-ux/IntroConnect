@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: IntroConnect
+  namespace: "2401075"
+spec:
+  selector:
+    app: recipe-finder
+  ports:
+    - port: 80
+      targetPort: 80
+  type: ClusterIP

@@ -1,0 +1,135 @@
+############################################
+# 1) MONGODB DEPLOYMENT
+############################################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo
+  namespace: "2401075"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      containers:
+      - name: mongo
+        image: mongo:6
+        ports:
+        - containerPort: 27017
+        volumeMounts:
+        - name: mongo-data
+          mountPath: /data/db
+      volumes:
+      - name: mongo-data
+        emptyDir: {}   # For testing only. Use PVC for production.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-service
+  namespace: "2401075"
+spec:
+  selector:
+    app: mongo
+  ports:
+    - protocol: TCP
+      port: 27017
+      targetPort: 27017
+  type: ClusterIP
+
+
+############################################
+# 2) BACKEND DEPLOYMENT (Node.js + Socket.IO)
+############################################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: introconnect-backend
+  namespace: "2401075"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: introconnect-backend
+  template:
+    metadata:
+      labels:
+        app: introconnect-backend
+    spec:
+      containers:
+      - name: backend
+        image: your-registry/introconnect-backend:v1   # CHANGE THIS
+        ports:
+        - containerPort: 5001
+        env:
+        - name: MONGO_URI
+          value: "mongodb://mongo-service:27017/introconnect"   # internal MongoDB
+        - name: JWT_SECRET
+          value: "your_jwt_secret"   # CHANGE
+        - name: NODE_ENV
+          value: "production"
+        - name: CLIENT_URL
+          value: "http://introconnect-frontend-service"   # for CORS
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: introconnect-backend-service
+  namespace: "2401075"
+spec:
+  selector:
+    app: introconnect-backend
+  ports:
+    - protocol: TCP
+      port: 5001
+      targetPort: 5001
+  type: ClusterIP
+
+
+############################################
+# 3) FRONTEND DEPLOYMENT (React + Nginx)
+############################################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: introconnect-frontend
+  namespace: "2401075"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: introconnect-frontend
+  template:
+    metadata:
+      labels:
+        app: introconnect-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: your-registry/introconnect-frontend:v1   # CHANGE THIS
+        ports:
+        - containerPort: 80
+        env:
+        - name: REACT_APP_BACKEND_URL
+          value: "http://introconnect-backend-service:5001"
+        - name: REACT_APP_SOCKET_URL
+          value: "http://introconnect-backend-service:5001"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: introconnect-frontend-service
+  namespace: "2401075"
+spec:
+  selector:
+    app: introconnect-frontend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP

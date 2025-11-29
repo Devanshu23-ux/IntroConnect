@@ -1,0 +1,6 @@
+projectKey=intro
+serverUrl=http://localhost:9000
+serverVersion=25.11.0.114957
+dashboardUrl=http://localhost:9000/dashboard?id=intro
+ceTaskId=ae187d73-7c81-43dc-8553-6dd120831da4
+ceTaskUrl=http://localhost:9000/api/ce/task?id=ae187d73-7c81-43dc-8553-6dd120831da4

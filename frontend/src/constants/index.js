@@ -163,35 +163,48 @@ export const THEMES = [
 ];
 
 export const LANGUAGES = [
+  // Keep English
   "English",
-  "Spanish",
-  "French",
-  "German",
-  "Mandarin",
-  "Japanese",
-  "Korean",
+  // Top 10 most spoken Indian languages
   "Hindi",
-  "Russian",
-  "Portuguese",
-  "Arabic",
-  "Italian",
-  "Turkish",
-  "Dutch",
+  "Bengali",
+  "Marathi",
+  "Telugu",
+  "Tamil",
+  "Gujarati",
+  "Urdu",
+  "Kannada",
+  "Odia",
+  "Malayalam",
 ];
 
 export const LANGUAGE_TO_FLAG = {
   english: "gb",
-  spanish: "es",
-  french: "fr",
-  german: "de",
-  mandarin: "cn",
-  japanese: "jp",
-  korean: "kr",
+  // Indian languages mapped to India flag
   hindi: "in",
-  russian: "ru",
-  portuguese: "pt",
-  arabic: "sa",
-  italian: "it",
-  turkish: "tr",
-  dutch: "nl",
+  bengali: "in",
+  marathi: "in",
+  telugu: "in",
+  tamil: "in",
+  gujarati: "in",
+  urdu: "in",
+  kannada: "in",
+  odia: "in",
+  malayalam: "in",
 };
+
+// Curated preset avatars (5 female-styled, 5 male-styled)
+export const PRESET_AVATARS = [
+  // Female-styled (lorelei)
+  "https://api.dicebear.com/7.x/lorelei/png?seed=Aurora&size=256&radius=50&backgroundType=gradientLinear&backgroundColor=b6e3f4,c0aede,d1d4f9",
+  "https://api.dicebear.com/7.x/lorelei/png?seed=Selena&size=256&radius=50&backgroundType=gradientLinear&backgroundColor=ffd5dc,ffdfbf,ffc9de",
+  "https://api.dicebear.com/7.x/lorelei/png?seed=Isla&size=256&radius=50&backgroundType=gradientLinear&backgroundColor=d1d4f9,b6e3f4,c0aede",
+  "https://api.dicebear.com/7.x/lorelei/png?seed=Maya&size=256&radius=50&backgroundType=gradientLinear&backgroundColor=c0aede,ffd5dc,d1d4f9",
+  "https://api.dicebear.com/7.x/lorelei/png?seed=Nova&size=256&radius=50&backgroundType=gradientLinear&backgroundColor=ffdfbf,b6e3f4,c0aede",
+  // Male-styled (adventurer)
+  "https://api.dicebear.com/7.x/adventurer/png?seed=Leo&size=256&radius=50&backgroundType=gradientLinear&backgroundColor=b6e3f4,c0aede,d1d4f9",
+  "https://api.dicebear.com/7.x/adventurer/png?seed=Ethan&size=256&radius=50&backgroundType=gradientLinear&backgroundColor=ffd5dc,ffdfbf,ffc9de",
+  "https://api.dicebear.com/7.x/adventurer/png?seed=Noah&size=256&radius=50&backgroundType=gradientLinear&backgroundColor=d1d4f9,b6e3f4,c0aede",
+  "https://api.dicebear.com/7.x/adventurer/png?seed=Liam&size=256&radius=50&backgroundType=gradientLinear&backgroundColor=c0aede,ffd5dc,d1d4f9",
+  "https://api.dicebear.com/7.x/adventurer/png?seed=Kai&size=256&radius=50&backgroundType=gradientLinear&backgroundColor=ffdfbf,b6e3f4,c0aede",
+];

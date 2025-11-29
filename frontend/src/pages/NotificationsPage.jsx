@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { acceptFriendRequest, getFriendRequests } from "../lib/api";
-import { BellIcon, ClockIcon, MessageSquareIcon, UserCheckIcon } from "lucide-react";
+import { acceptFriendRequest, getFriendRequests, markNotificationsRead } from "../lib/api";
+import { BellIcon, ClockIcon, MessageSquareIcon, UserCheckIcon, CheckCheckIcon } from "lucide-react";
 import NoNotificationsFound from "../components/NoNotificationsFound";
 
 const NotificationsPage = () => {
@@ -14,13 +14,51 @@ const NotificationsPage = () => {
   const { mutate: acceptRequestMutation, isPending } = useMutation({
     mutationFn: acceptFriendRequest,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["friendRequests"] });
-      queryClient.invalidateQueries({ queryKey: ["friends"] });
+      queryClient.invalidateQueries({ queryKey: ["friendRequests"], refetchType: "active" });
+      queryClient.invalidateQueries({ queryKey: ["friends"], refetchType: "active" });
+    },
+  });
+
+  const { mutate: markPendingRead, isPending: markingPending } = useMutation({
+    mutationFn: () => markNotificationsRead("pending"),
+    onMutate: async () => {
+      // Optimistically flip pending flags in cache so Navbar badge updates instantly
+      await queryClient.cancelQueries({ queryKey: ["friendRequests"] });
+      queryClient.setQueriesData({ queryKey: ["friendRequests"] }, (prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          incomingReqs: (prev.incomingReqs || []).map((r) => ({ ...r, recipientSeenPending: true })),
+        };
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["friendRequests"], refetchType: "active" });
+    },
+  });
+
+  const { mutate: markAcceptedRead, isPending: markingAccepted } = useMutation({
+    mutationFn: () => markNotificationsRead("accepted"),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ["friendRequests"] });
+      queryClient.setQueriesData({ queryKey: ["friendRequests"] }, (prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          acceptedReqs: (prev.acceptedReqs || []).map((r) => ({ ...r, senderSeenAccepted: true })),
+        };
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["friendRequests"], refetchType: "active" });
     },
   });
 
   const incomingRequests = friendRequests?.incomingReqs || [];
   const acceptedRequests = friendRequests?.acceptedReqs || [];
+
+  const unreadIncomingCount = incomingRequests.filter((r) => !r.recipientSeenPending).length;
+  const unreadAcceptedCount = acceptedRequests.filter((r) => !r.senderSeenAccepted).length;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -35,11 +73,22 @@ const NotificationsPage = () => {
           <>
             {incomingRequests.length > 0 && (
               <section className="space-y-4">
-                <h2 className="text-xl font-semibold flex items-center gap-2">
-                  <UserCheckIcon className="h-5 w-5 text-primary" />
-                  Friend Requests
-                  <span className="badge badge-primary ml-2">{incomingRequests.length}</span>
-                </h2>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-semibold flex items-center gap-2">
+                    <UserCheckIcon className="h-5 w-5 text-primary" />
+                    Friend Requests
+                    <span className="badge badge-primary ml-2">{incomingRequests.length}</span>
+                  </h2>
+                  {unreadIncomingCount > 0 && (
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => markPendingRead()}
+                      disabled={markingPending}
+                    >
+                      <CheckCheckIcon className="h-4 w-4 mr-1" /> Mark all as read
+                    </button>
+                  )}
+                </div>
 
                 <div className="space-y-3">
                   {incomingRequests.map((request) => (
@@ -61,13 +110,15 @@ const NotificationsPage = () => {
                               />
                             </div>
                             <div>
-                              <h3 className="font-semibold">{request.sender.fullName}</h3>
+                              <h3 className="font-semibold">
+                                {request.sender.fullName}
+                                {!request.recipientSeenPending && (
+                                  <span className="badge badge-info badge-sm ml-2">New</span>
+                                )}
+                              </h3>
                               <div className="flex flex-wrap gap-1.5 mt-1">
                                 <span className="badge badge-secondary badge-sm">
                                   Native: {request.sender.nativeLanguage}
-                                </span>
-                                <span className="badge badge-outline badge-sm">
-                                  Learning: {request.sender.learningLanguage}
                                 </span>
                               </div>
                             </div>
@@ -91,10 +142,21 @@ const NotificationsPage = () => {
             {/* ACCEPTED REQS NOTIFICATONS */}
             {acceptedRequests.length > 0 && (
               <section className="space-y-4">
-                <h2 className="text-xl font-semibold flex items-center gap-2">
-                  <BellIcon className="h-5 w-5 text-success" />
-                  New Connections
-                </h2>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-semibold flex items-center gap-2">
+                    <BellIcon className="h-5 w-5 text-success" />
+                    New Connections
+                  </h2>
+                  {unreadAcceptedCount > 0 && (
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => markAcceptedRead()}
+                      disabled={markingAccepted}
+                    >
+                      <CheckCheckIcon className="h-4 w-4 mr-1" /> Mark all as read
+                    </button>
+                  )}
+                </div>
 
                 <div className="space-y-3">
                   {acceptedRequests.map((notification) => (
@@ -112,7 +174,12 @@ const NotificationsPage = () => {
                             />
                           </div>
                           <div className="flex-1">
-                            <h3 className="font-semibold">{notification.recipient.fullName}</h3>
+                            <h3 className="font-semibold">
+                              {notification.recipient.fullName}
+                              {!notification.senderSeenAccepted && (
+                                <span className="badge badge-info badge-sm ml-2">New</span>
+                              )}
+                            </h3>
                             <p className="text-sm my-1">
                               {notification.recipient.fullName} accepted your friend request
                             </p>
